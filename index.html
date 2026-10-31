@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#12100e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="sotto voce" />
+<title>sotto voce</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./icon.svg" />
+<link rel="icon" href="./icon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+
+<!-- ══════════════════════════ THE SCORE (screen 1) ══════════════════════════ -->
+<main id="scoreView" class="screen">
+
+  <header class="bar">
+    <h1 class="mark">sotto voce</h1>
+    <div class="barRight">
+      <span id="syncDot" class="dot" title="sync">○</span>
+      <button id="settingsBtn" class="iconBtn" aria-label="Settings">⋯</button>
+    </div>
+  </header>
+
+  <button id="newBtn" class="hum">Hum something.</button>
+
+  <p id="emptyWrite" class="empty">Nothing yet. Hum something.</p>
+  <p id="emptySent" class="empty muted" hidden>You haven&rsquo;t played anything for him.</p>
+
+  <div id="systems" class="systems" aria-live="polite"></div>
+</main>
+
+<!-- ══════════════════════════ THE EDITOR (screen 2) ═════════════════════════ -->
+<section id="editorView" class="screen" hidden>
+  <header class="bar">
+    <button id="backBtn" class="iconBtn" aria-label="Back">&#8592;</button>
+    <span id="editorMeta" class="meta"></span>
+    <button id="moreBtn" class="iconBtn" aria-label="More">⋯</button>
+  </header>
+
+  <textarea id="editor" placeholder="Hum something." spellcheck="true" autocomplete="off"></textarea>
+
+  <p id="sentNote" class="sentNote" hidden>Sent <span id="sentAt"></span></p>
+
+  <footer class="composer">
+    <button id="sendBtn" class="send">Send to <span id="recipientName">them</span></button>
+  </footer>
+
+  <div id="moreMenu" class="menu" hidden>
+    <button id="exportEntryBtn">Export this entry</button>
+    <button id="deleteBtn" class="danger">Delete</button>
+  </div>
+</section>
+
+<!-- ══════════════════════════ SETTINGS (panel) ══════════════════════════════ -->
+<section id="settingsView" class="screen" hidden>
+  <header class="bar">
+    <button id="closeSettingsBtn" class="iconBtn" aria-label="Close">&#8592;</button>
+    <span class="meta">Settings</span>
+    <span></span>
+  </header>
+
+  <div class="panel">
+    <label class="lbl" for="recipient">Send to</label>
+    <input id="recipient" type="email" inputmode="email" placeholder="their email address" autocomplete="email" />
+
+    <label class="lbl" for="displayName">Your name</label>
+    <input id="displayName" type="text" placeholder="how you sign off" autocomplete="name" />
+
+    <label class="lbl" for="clientId">Google client ID</label>
+    <input id="clientId" type="text" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false" />
+    <p class="hint">Set up once in Google Cloud Console. Public value, no secret.</p>
+
+    <div class="divider"></div>
+
+    <dl class="status">
+      <dt>Drive</dt><dd id="driveState">not connected</dd>
+      <dt>Last sync</dt><dd id="lastSync">never</dd>
+      <dt>Storage</dt><dd id="storageState">checking…</dd>
+    </dl>
+    <button id="connectBtn" class="rowBtn">Connect Google Drive</button>
+    <button id="syncNowBtn" class="rowBtn">Sync now</button>
+
+    <div class="divider"></div>
+
+    <button id="exportJsonBtn" class="rowBtn">Export all (JSON)</button>
+    <button id="exportMdBtn" class="rowBtn">Export all (Markdown)</button>
+    <button id="importBtn" class="rowBtn">Import from JSON</button>
+    <input id="importFile" type="file" accept="application/json,.json" hidden />
+
+    <p class="plain" id="persistWarn" hidden></p>
+    <p class="plain" id="settingsMsg"></p>
+  </div>
+</section>
+
+<div id="toast" class="toast" hidden></div>
+<div id="reconnect" class="reconnect" hidden>Tap to reconnect</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

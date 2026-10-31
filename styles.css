@@ -1,0 +1,255 @@
+/* sotto voce — styles.css
+ *
+ * §7d THE SCORE. The governing idea: use the score's own grammar, but only where
+ * it CARRIES INFORMATION. Bar lines and note position mean something; the
+ * wallpaper does not get borrowed.
+ *
+ * ⛔ sent/draft is NEVER signalled by colour alone — it is ON the line vs OFF it,
+ * filled vs hollow. Survives greyscale, colour blindness and a cracked screen.
+ * ⛔ The staff line is the ONLY horizontal rule in the app. No card borders, no
+ * shadows, no dividers anywhere else.
+ * ⛔ No motion that implies urgency. A score for a tune hummed quietly has no
+ * percussion.
+ */
+
+:root {
+  --bg: #12100e;
+  --bg2: #1a1714;
+  --ink: #f0e9e1;
+  --dim: #8d8378;
+  --hair: rgba(240, 233, 225, 0.14);
+  --staff: rgba(240, 233, 225, 0.16);
+  --line: #322b25;
+  --spine: 26px;
+  --accent: #c9a227;
+  --danger: #c05a4a;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+/* ⚠️ REQUIRED. `#editorView { display:flex }` is an ID selector, so it outranks the
+   UA's `[hidden] { display:none }` and the editor stays visible on the score.
+   This rule must stay above every display declaration that could win. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior: none;
+}
+body { min-height: 100dvh; }
+
+.screen {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: max(10px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+}
+
+/* ── bar ─────────────────────────────────────────────────────────────── */
+.bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 0 18px;
+}
+.barRight { display: flex; align-items: center; gap: 4px; }
+
+/* the name is a musical expression mark: lowercase italic, never title-cased */
+.mark {
+  font: italic 400 21px/1 ui-serif, Georgia, "Times New Roman", serif;
+  margin: 0; letter-spacing: .01em; color: var(--ink);
+}
+
+.dot { font-size: 12px; color: var(--dim); letter-spacing: .05em; }
+.dot.ok { color: var(--accent); }
+.dot.warn { color: var(--danger); }
+
+.iconBtn {
+  background: none; border: 0; color: var(--dim);
+  font-size: 20px; line-height: 1; padding: 6px 8px; cursor: pointer;
+}
+.meta { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+
+/* ── composer prompt ─────────────────────────────────────────────────── */
+.hum {
+  display: block; width: 100%; text-align: left;
+  background: none; border: 0; border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font: italic 400 18px/1.4 ui-serif, Georgia, serif;
+  padding: 12px 2px 14px; cursor: pointer;
+}
+.hum:active { color: var(--ink); }
+
+.empty {
+  color: var(--dim); font: italic 400 17px/1.5 ui-serif, Georgia, serif;
+  margin: 28px 2px;
+}
+.empty.muted { margin-top: 4px; font-size: 16px; }
+
+/* ── the spine ───────────────────────────────────────────────────────── */
+.systems { position: relative; padding-top: 18px; }
+.systems::before {
+  content: ''; position: absolute; left: var(--spine); top: 0; bottom: 0;
+  width: 1px; background: var(--hair); z-index: 0;
+}
+
+/* ── a day is a system ───────────────────────────────────────────────── */
+.system { position: relative; z-index: 1; }
+
+.dateHead {
+  display: flex; align-items: baseline; gap: 7px;
+  padding: 14px 0 4px 0;
+  font: italic 400 12.5px/1 ui-serif, Georgia, serif;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+}
+.dateHead .w { font-size: 11px; letter-spacing: .2em; opacity: .8; }
+
+/* the ONLY horizontal rule in the app — the system break */
+.staff {
+  height: 17px; margin: 3px 0 5px;
+  background-image: repeating-linear-gradient(
+    to bottom, var(--staff) 0 1px, transparent 1px 4px);
+  opacity: .55;
+}
+
+/* ── an entry is a note ──────────────────────────────────────────────── */
+.note {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: start;
+  gap: 0 6px;
+  padding: 11px 0;
+  cursor: pointer;
+  background: none; border: 0; width: 100%; text-align: left;
+  color: inherit; font: inherit;
+}
+
+/* glyph column — holds the spine, so it must be transparent */
+.g { position: relative; height: 26px; }
+
+.head {
+  position: absolute; top: 7px;
+  width: 9px; height: 9px; border-radius: 50%;
+}
+
+/* INKED — sent. Filled, sitting ON the line, with a stem. It was played. */
+.inked .head { left: 22px; background: var(--ink); }
+.inked .stem {
+  position: absolute; top: 11px; left: 30px;
+  width: 11px; height: 1.5px; background: var(--ink);
+}
+
+/* PENCIL — draft. Hollow, OFF the line, lighter. It made no sound. */
+.pencilled .head {
+  left: 9px; background: transparent;
+  border: 1.5px solid var(--dim);
+}
+
+.note .body {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 16.5px; line-height: 1.42;
+}
+.inked .body { color: var(--ink); }
+.pencilled .body { color: rgba(240, 233, 225, .8); }
+
+.note .t {
+  font-size: 12.5px; color: var(--dim); white-space: nowrap; padding-top: 3px;
+}
+
+/* ── editor ──────────────────────────────────────────────────────────── */
+#editorView { display: flex; flex-direction: column; }
+
+#editor {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 55vh;
+  background: none; border: 0; outline: none; resize: none;
+  color: var(--ink);
+  font: 400 18px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  padding: 6px 2px;
+}
+#editor::placeholder { color: var(--dim); font-style: italic; }
+#editor[readonly] { color: rgba(240,233,225,.85); }
+
+.sentNote {
+  font: italic 400 13px/1.4 ui-serif, Georgia, serif;
+  color: var(--dim); margin: 4px 2px 0;
+}
+
+.composer { padding-top: 14px; }
+.send {
+  width: 100%; padding: 17px;
+  background: var(--ink); color: #14120f;
+  border: 1px solid var(--ink); border-radius: 2px;
+  font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  cursor: pointer;
+}
+.send:disabled {
+  background: transparent; color: var(--dim); border-color: var(--line); cursor: default;
+}
+
+.menu {
+  position: fixed; right: 18px; bottom: 84px;
+  background: var(--bg2); border: 1px solid var(--line);
+  display: flex; flex-direction: column; min-width: 190px;
+}
+.menu button {
+  background: none; border: 0; color: var(--ink); text-align: left;
+  padding: 14px 16px; font-size: 14.5px; cursor: pointer;
+}
+.menu button + button { border-top: 1px solid var(--line); }
+.menu .danger { color: var(--danger); }
+
+/* ── settings ────────────────────────────────────────────────────────── */
+.panel { padding-bottom: 30px; }
+
+.lbl {
+  display: block; margin: 20px 0 7px;
+  font-size: 11px; font-weight: 700; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--dim);
+}
+.panel input[type=text], .panel input[type=email] {
+  width: 100%; padding: 14px 13px;
+  background: var(--bg2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 2px; font-size: 16px;
+}
+.panel input:focus { outline: 1px solid var(--hair); }
+
+.hint { margin: 7px 2px 0; font-size: 12px; color: var(--dim); line-height: 1.45; }
+
+.divider { height: 1px; background: var(--line); margin: 24px 0 6px; }
+
+.status { margin: 0 0 14px; display: grid; grid-template-columns: 96px 1fr; gap: 7px 12px; font-size: 13.5px; }
+.status dt { color: var(--dim); margin: 0; }
+.status dd { margin: 0; }
+
+/* Settings is where she goes when something is wrong: ⛔ plain English, no metaphor */
+.rowBtn {
+  display: block; width: 100%; text-align: left;
+  background: var(--bg2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 2px;
+  padding: 14px 14px; margin-top: 8px;
+  font-size: 14.5px; cursor: pointer;
+}
+.plain { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 14px 2px 0; }
+.plain.warn { color: var(--danger); }
+
+/* ── transient ───────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%);
+  background: var(--bg2); border: 1px solid var(--line);
+  color: var(--ink); padding: 11px 18px; font-size: 14px;
+  letter-spacing: .04em; z-index: 20;
+}
+.reconnect {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--danger); color: #fff;
+  text-align: center; padding: 13px; font-size: 14px; font-weight: 600;
+  cursor: pointer; z-index: 25;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
