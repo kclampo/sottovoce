@@ -6,12 +6,13 @@
  * ⚠️ Only same-origin GETs are handled. The Google Identity Services script comes
  * from accounts.google.com — never intercept or cache it, or silent re-auth breaks.
  */
-const CACHE = 'sotto-voce-v1';
+const CACHE = 'sotto-voce-v2';
 const SHELL = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './config.js',
   './db.js',
   './drive.js',
   './sync.js',

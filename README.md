@@ -39,12 +39,35 @@ blindness and a cracked screen.
 
 ---
 
+## Who logs in — and what the repo knows
+
+**Nothing about any person is in this repo.** No name, no email address, no account, no
+token. `check.sh` fails the build if one appears.
+
+**Every user authenticates into their own Google account on their own device.** Each person
+signs into their own account; the token is theirs, held in their browser's memory for about
+an hour, and the notes land in their own Drive. The app has no concept of a "user" beyond
+whoever is signed in right now.
+
+⛔ **No Gmail.** The app never requests a Gmail scope and cannot read anyone's email. The
+only scope is `drive.file`, which sees **only files this app itself created** — not her
+other documents, not her photos, not her mail.
+
+---
+
 ## First-run setup — two steps, both once
 
-### 1. Google Cloud Console (~15 min, Kevin does this once)
+Neither step is done by the person using the app, and neither involves anybody's
+credentials.
+
+### 1. Register the app with Google (once, by whoever ships this)
+
+This is **app registration, not account setup.** Google has no backend here to identify the
+caller, so the application needs a public name badge — a *client ID*. That is all it is.
 
 1. **console.cloud.google.com** → new project, e.g. `sotto-notebook`
 2. **APIs & Services → Library** → enable **Google Drive API**
+   — ⛔ Drive only. Do not enable Gmail, and do not add a Gmail scope.
 3. **OAuth consent screen** → User type **External**
    - App name: **neutral. No personal names, no household identifiers.**
    - Scopes: add **exactly one** — `https://www.googleapis.com/auth/drive.file`
@@ -60,10 +83,22 @@ blindness and a cracked screen.
      plus `http://localhost:8795` for dev.
    - **No redirect URI needed.** This is a token flow, not a redirect flow.
 
-Paste the resulting **client ID** into Settings in the app. It is public — it ships in the
-bundle, and that is correct.
+Paste the resulting client ID into **`config.js`**:
 
-### 2. Share the outbox folder — once, forever
+```js
+export const GOOGLE_CLIENT_ID = '1234…apps.googleusercontent.com';
+```
+
+That is the only line to change, and it is the only thing that ships. It is a public
+identifier — putting it in the repo is correct and expected, and it exposes nothing.
+
+**The client ID is never shown in the app's UI.** The user installs the app, taps
+**Connect Google Drive**, and signs into their own account.
+
+**If the client ID is left empty the app still works** — writing, drafting, sending and
+export all function. Only Drive sync is absent, and Settings says so in plain English.
+
+### 2. Share the outbox folder — once, forever, from her Drive
 
 After her first Send: open the Drive app → long-press the **`outbox`** folder → **Share** →
 add his email as **Viewer**.
@@ -74,9 +109,10 @@ add his email as **Viewer**.
 
 ## ⛔ There is no client secret
 
-- The client ID is public. No client secret exists for this flow — never create one.
+- A browser token flow has **no client secret**. Never create one.
 - The access token is held **in memory only** — never localStorage, never a cookie.
 - No API keys anywhere in the client.
+- No account, email or identifier of any kind is baked into these files.
 
 ---
 

@@ -14,6 +14,7 @@
  */
 
 import { APP_VERSION } from './version.js';
+import { GOOGLE_CLIENT_ID } from './config.js';
 import {
   newEntry, putEntry, getEntry, listEntries, tombstone,
   getSetting, setSetting, requestPersistence,
@@ -254,13 +255,14 @@ async function doSend() {
 async function loadSettings() {
   $('recipient').value = await getSetting('recipient', '');
   $('displayName').value = await getSetting('display_name', '');
-  $('clientId').value = await getSetting('client_id', '');
 
   const { at, err } = await lastSyncInfo();
   $('lastSync').textContent = at ? new Date(at).toLocaleString() : 'never';
   $('driveState').textContent = isConnected()
     ? 'connected'
-    : (hasClientId() ? 'not connected' : 'no client ID set');
+    : (hasClientId()
+        ? 'not connected — tap Connect Google Drive'
+        : 'sync not set up in this build');
   if (err) $('lastSync').textContent += '  ⚠ ' + err;
 
   const st = await getSetting('persist_state', 'unknown');
@@ -340,14 +342,11 @@ $('recipient').addEventListener('input', async e => {
 $('displayName').addEventListener('input', async e => {
   await setSetting('display_name', e.target.value.trim());
 });
-$('clientId').addEventListener('change', async e => {
-  const v = e.target.value.trim();
-  await setSetting('client_id', v);
-  configure({ clientId: v });
-  await loadSettings();
-});
-
 $('connectBtn').addEventListener('click', async () => {
+  if (!hasClientId()) {
+    $('settingsMsg').textContent = 'Drive sync is not set up in this build. Everything else works — writing, sending, export.';
+    return;
+  }
   try {
     await token({ interactive: true });
     $('settingsMsg').textContent = 'Connected.';
@@ -424,7 +423,7 @@ document.addEventListener('visibilitychange', async () => {
 /* ─────────────────────────────────────────────────────────── boot */
 (async function boot() {
   try {
-    const clientId = await getSetting('client_id', '');
+    const clientId = GOOGLE_CLIENT_ID;
     configure({
       clientId,
       onNeedReconnect: () => { $('reconnect').hidden = false; },

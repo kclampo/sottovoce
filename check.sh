@@ -75,9 +75,34 @@ else
 fi
 
 echo "== required files =="
-for f in index.html styles.css app.js db.js drive.js sync.js version.js sw.js manifest.json icon.svg; do
+for f in index.html styles.css app.js db.js drive.js sync.js config.js version.js sw.js manifest.json icon.svg; do
   [ -f "$f" ] && echo "  OK   $f" || { echo "  MISSING $f"; fail=1; }
 done
+
+echo "== §0.3 no user data in the repo =="
+# Personal names live in .gate-names, which is GITIGNORED — the published repo must
+# not carry anyone's name, including inside its own guard. Absent file ⇒ skip.
+if [ -f .gate-names ]; then
+  names=$(grep -vE '^[[:space:]]*(#|$)' .gate-names | paste -sd'|' -)
+  if [ -n "$names" ] && grep -rniE "$names" index.html app.js db.js drive.js sync.js config.js manifest.json README.md 2>/dev/null; then
+    echo "  ⛔ personal identifier in shipped source or docs"; fail=1
+  else
+    echo "  OK   no personal identifiers"
+  fi
+else
+  echo "  --   .gate-names absent; name check skipped"
+fi
+# an email address, a bearer token or a secret in shipped source is a hard fail
+emails=$(grep -rnoE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' index.html app.js db.js drive.js sync.js config.js manifest.json 2>/dev/null | grep -v 'googleusercontent.com' || true)
+if [ -n "$emails" ]; then echo "  ⛔ email address baked into source:"; echo "$emails" | sed 's/^/     /'; fail=1;
+else echo "  OK   no email addresses"; fi
+if grep -rniE '(client_secret|refresh_token|Bearer [A-Za-z0-9._-]{20,}|ya29\.)' index.html app.js db.js drive.js sync.js config.js 2>/dev/null; then
+  echo "  ⛔ credential material in source"; fail=1
+else
+  echo "  OK   no secrets or tokens"
+fi
+# the client ID is app identity, not user data — but it must never be a hardcoded account
+if grep -q 'GOOGLE_CLIENT_ID' config.js 2>/dev/null; then echo "  OK   client ID lives in config.js (app identity)"; else echo "  FAIL config.js missing GOOGLE_CLIENT_ID"; fail=1; fi
 
 echo "== version consistency =="
 vj=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' version.json | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
@@ -88,13 +113,6 @@ echo "  version.json = $vj"
 
 echo "== service worker cache =="
 grep -nE "^const CACHE" sw.js | sed 's/^/  /'
-
-echo "== §0.3 identifier leak scan =="
-if grep -rniE 'denise|kclampo|kevin' index.html app.js db.js drive.js sync.js manifest.json 2>/dev/null; then
-  echo "  ⛔ personal identifier in shipped source — §0.3 forbids it"; fail=1
-else
-  echo "  OK   no personal identifiers"
-fi
 
 echo
 [ "$fail" -eq 0 ] && echo "PASS — safe to push" || echo "FAIL — do not push"

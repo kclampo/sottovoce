@@ -1,4 +1,4 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "notes": "First build. Two screens, the score and the editor. Local-first, IndexedDB, Google Drive sync, mailto handoff."
 }
