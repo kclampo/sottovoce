@@ -1,4 +1,4 @@
 {
-  "version": "1.0.2",
-  "notes": "Real PNG icons. The app shipped with an SVG only, which iOS ignores for a home-screen icon and which does not meet Chrome's install criteria, so it could not be added to a home screen properly on either. icon-192, icon-512, a maskable 512 and a 180px apple-touch-icon are now rendered from the same source and listed in the manifest and the service-worker shell."
+  "version": "1.0.3",
+  "notes": "First run. Opening the app for the first time now asks who to send to and how you sign off, and offers the Google Drive connection right there instead of hiding it behind the settings icon. It is skippable — Start writing works with Drive never connected, because the fallback is Export, not a sign-in wall."
 }

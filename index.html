@@ -17,6 +17,44 @@
 </head>
 <body>
 
+<!-- ═════════════════════ FIRST RUN (screen 0 — appears once) ══════════════════ -->
+<!-- ⭐ 2026-11-01: "I want the google drive set up to be on the phone on first set
+     up of the app." So the Drive connection is offered HERE, at first run, not
+     buried behind the ⋯ icon. It is skippable on purpose — the app is fully
+     usable without it, and a hard gate on a Google sign-in would be the one
+     thing that stops her writing. Buttons stay literal (§7c): Connect, Start. -->
+<section id="setupView" class="screen" hidden>
+  <header class="bar">
+    <h1 class="mark">sotto voce</h1>
+    <span></span>
+  </header>
+
+  <p class="empty">A song shared between two people. Nothing you write leaves this
+    phone unless you send it.</p>
+
+  <div class="panel">
+    <label class="lbl" for="setupRecipient">Send to</label>
+    <input id="setupRecipient" type="email" inputmode="email"
+           placeholder="their email address" autocomplete="email" />
+
+    <label class="lbl" for="setupName">Your name</label>
+    <input id="setupName" type="text" placeholder="how you sign off" autocomplete="name" />
+
+    <div class="divider"></div>
+
+    <dl class="status">
+      <dt>Drive</dt><dd id="setupDriveState">not connected</dd>
+    </dl>
+    <button id="setupConnectBtn" class="rowBtn">Connect Google Drive</button>
+    <p class="plain" id="setupDriveNote"></p>
+
+    <div class="divider"></div>
+
+    <button id="setupDoneBtn" class="send">Start writing</button>
+    <p class="plain" id="setupMsg"></p>
+  </div>
+</section>
+
 <!-- ══════════════════════════ THE SCORE (screen 1) ══════════════════════════ -->
 <main id="scoreView" class="screen">
 

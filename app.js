@@ -25,7 +25,12 @@ import { fullSync, writeOutbox, buildMailto, lastSyncInfo, resetTreeCache } from
 
 const $ = id => document.getElementById(id);
 
-const VIEWS = { score: $('scoreView'), editor: $('editorView'), settings: $('settingsView') };
+const VIEWS = {
+  setup: $('setupView'),
+  score: $('scoreView'),
+  editor: $('editorView'),
+  settings: $('settingsView'),
+};
 function show(name) {
   for (const [k, el] of Object.entries(VIEWS)) el.hidden = (k !== name);
 }
@@ -420,6 +425,62 @@ document.addEventListener('visibilitychange', async () => {
   }
 });
 
+/* ─────────────────────────────────────────────────────── first run (§7a) */
+/* ⭐ The Google connection is offered at FIRST RUN, on the phone, rather than
+   buried behind the ⋯ icon (2026-11-01). It is not a gate: "Start writing" works
+   with Drive never connected, because §2a's fallback is export, not a sign-in
+   wall. A hard gate here would be the one thing that stops her writing. */
+async function openSetup() {
+  $('setupRecipient').value = await getSetting('recipient', '');
+  $('setupName').value = await getSetting('display_name', '');
+
+  const canConnect = hasClientId();
+  $('setupConnectBtn').hidden = !canConnect;
+  $('setupDriveNote').textContent = canConnect
+    ? 'Drive keeps a copy of what you write, in your own account. Without it everything lives on this phone only.'
+    : 'Drive sync is not switched on in this build, so nothing leaves the phone except by Send. Use Export in Settings to keep a backup.';
+  $('setupDriveState').textContent = isConnected() ? 'connected' : 'not connected';
+  show('setup');
+}
+
+$('setupConnectBtn').addEventListener('click', async () => {
+  $('setupMsg').textContent = '';
+  $('setupDriveState').textContent = 'connecting…';
+  try {
+    await token({ interactive: true });
+    $('setupDriveState').textContent = 'connected';
+    resetTreeCache();
+    await syncNow();
+    $('setupMsg').textContent = 'Drive connected.';
+  } catch (err) {
+    $('setupDriveState').textContent = 'not connected';
+    $('setupMsg').textContent = 'Could not connect: ' + String(err.message || err);
+  }
+});
+
+$('setupRecipient').addEventListener('input', async e => {
+  const v = e.target.value.trim();
+  e.target.value = v;
+  await setSetting('recipient', v);
+});
+$('setupName').addEventListener('input', async e => {
+  await setSetting('display_name', e.target.value.trim());
+});
+
+$('setupDoneBtn').addEventListener('click', async () => {
+  const r = $('setupRecipient').value.trim();
+  if (r && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(r)) {
+    $('setupMsg').textContent = 'That does not look like an email address.';
+    return;
+  }
+  await setSetting('recipient', r);
+  await setSetting('display_name', $('setupName').value.trim());
+  await setSetting('onboarded', true);
+  show('score');
+  await renderScore();
+  await updateSyncDot();
+});
+
 /* ─────────────────────────────────────────────────────────── boot */
 (async function boot() {
   try {
@@ -437,7 +498,13 @@ document.addEventListener('visibilitychange', async () => {
     }
 
     await renderScore();
-    show('score');
+
+    // ⭐ FIRST RUN (§7a). Drive is offered here, once, on the phone.
+    if (!(await getSetting('onboarded', false))) {
+      await openSetup();
+    } else {
+      show('score');
+    }
 
     // §5c silent reconnect if a client ID exists and a Google session is live
     if (hasClientId()) {
