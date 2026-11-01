@@ -6,7 +6,7 @@
  * ⚠️ Only same-origin GETs are handled. The Google Identity Services script comes
  * from accounts.google.com — never intercept or cache it, or silent re-auth breaks.
  */
-const CACHE = 'sotto-voce-v2';
+const CACHE = 'sotto-voce-v3';
 const SHELL = [
   './',
   './index.html',
@@ -19,6 +19,10 @@ const SHELL = [
   './version.js',
   './manifest.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-maskable-512.png',
+  './apple-touch-icon.png',
 ];
 
 self.addEventListener('install', e => {

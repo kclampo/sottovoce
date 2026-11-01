@@ -1,4 +1,4 @@
 {
-  "version": "1.0.1",
-  "notes": "First build. Two screens, the score and the editor. Local-first, IndexedDB, Google Drive sync, mailto handoff."
+  "version": "1.0.2",
+  "notes": "Real PNG icons. The app shipped with an SVG only, which iOS ignores for a home-screen icon and which does not meet Chrome's install criteria, so it could not be added to a home screen properly on either. icon-192, icon-512, a maskable 512 and a 180px apple-touch-icon are now rendered from the same source and listed in the manifest and the service-worker shell."
 }
