@@ -26,7 +26,11 @@
 <section id="setupView" class="screen" hidden>
   <header class="bar">
     <h1 class="mark">sotto voce</h1>
-    <span></span>
+    <!-- ⭐ The version belongs on THIS screen too — it is where a new install
+         lands, and it is the only way to confirm which build arrived. -->
+    <div class="barRight">
+      <span class="ver" title="version"></span>
+    </div>
   </header>
 
   <p class="empty">A song shared between two people. Nothing you write leaves this
@@ -65,7 +69,7 @@
            state and a bad repeat control — once notes exist it reads as a heading,
            which is how a second thought became hard to start (2026-11-01). -->
       <button id="newTopBtn" class="iconBtn" aria-label="New thought">+</button>
-      <span id="verTag" class="ver" title="version"></span>
+      <span class="ver" title="version"></span>
       <span id="syncDot" class="dot" title="sync">○</span>
       <button id="settingsBtn" class="iconBtn" aria-label="Settings">⋯</button>
     </div>

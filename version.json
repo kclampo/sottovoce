@@ -1,4 +1,4 @@
 {
-  "version": "1.0.6",
-  "notes": "The service worker now loads from the network first and only falls back to the cache when offline. Before this, a new deploy needed two launches to appear, which meant the version number in the header could never do its job - the thing that tells you whether the refresh happened was itself hidden by the stale cache."
+  "version": "1.0.7",
+  "notes": "The version now shows on the first-run screen as well as the score. Both headers share a class instead of an id, because two elements with the same id would have left one of them permanently blank."
 }

@@ -528,9 +528,10 @@ $('setupDoneBtn').addEventListener('click', async () => {
     }
     startSyncTimers();
     window.APP_VERSION = APP_VERSION;
-    /* ⭐ So a refresh is visible at a glance (2026-11-01). */
-    const vtag = $('verTag');
-    if (vtag) vtag.textContent = 'v' + APP_VERSION;
+    /* ⭐ So a refresh is visible at a glance (2026-11-01). EVERY screen's header
+       carries one — a class, not an id, because two elements share the job and a
+       duplicate id would silently leave one of them blank. */
+    document.querySelectorAll('.ver').forEach(el => { el.textContent = 'v' + APP_VERSION; });
   } catch (err) {
     console.error('boot failed', err);
     toast('Something went wrong opening the notebook.');
