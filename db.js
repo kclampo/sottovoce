@@ -179,32 +179,65 @@ export async function exportMarkdown() {
 }
 
 /**
+ * ⭐ §6 MERGE RULE FOR ONE ENTRY — the single source of truth.
+ *
+ * Before 2026-11-01 this logic lived only inside importJSON, so a RESTORE got the
+ * §6 treatment and a SYNC did not. pull() skipped any id it already had, which is
+ * why a newer Drive copy never came down. Both now call this.
+ *
+ *    no local copy        → add it
+ *    remote.rev higher    → take remote; if the bodies differ, keep the local text
+ *                           as a NEW entry first, so nothing is discarded
+ *    remote.rev equal/lower → keep local (it wins, nothing lost)
+ */
+export async function mergeEntry(incoming) {
+  if (!incoming || typeof incoming.id !== 'string') return 'skip';
+  const local = await getEntry(incoming.id);
+  if (!local) { await putEntry({ ...incoming }); return 'added'; }
+  if (incoming.rev > local.rev) {
+    if (local.body && incoming.body && local.body !== incoming.body) {
+      const rec = newEntry();
+      rec.body = local.body;
+      rec.created_at = local.created_at;
+      await putEntry(rec);
+      await putEntry({ ...incoming });
+      return 'recovered';
+    }
+    await putEntry({ ...incoming });
+    return 'merged';
+  }
+  /* ⭐ EQUAL REV, DIFFERENT TEXT — a real conflict the rev rule does not order:
+     both devices incremented from the same base independently. Neither is
+     "higher", so local stays — but §6's promise is that no text is discarded,
+     not merely that the highest rev wins. Keep the incoming text as a copy.
+     ⚠️ DEDUPE BY BODY, or every subsequent sync would add another copy of it
+     (the local rev never moves, so the pair stays "equal but different" forever). */
+  if (incoming.rev === local.rev && local.body && incoming.body && local.body !== incoming.body) {
+    const all = await allRaw();
+    if (all.some(e => e.body === incoming.body)) return 'kept-local';
+    const rec = newEntry();
+    rec.body = incoming.body;
+    rec.created_at = incoming.created_at || local.created_at;
+    await putEntry(rec);
+    return 'recovered';
+  }
+  return 'kept-local';
+}
+
+/**
  * Import is full-fidelity: ids and state are preserved, so an import into a
- * cleared profile restores exactly what was exported. Union merge on id, and on
- * a body mismatch the LOCAL loser is preserved as <id>-recovered — never silently
- * discard text (§6).
+ * cleared profile restores exactly what was exported. Delegates to mergeEntry so
+ * the §6 rule cannot drift between restore and sync.
  */
 export async function importJSON(text) {
   const data = JSON.parse(text);
   if (!data || !Array.isArray(data.entries)) throw new Error('Not a sotto voce export.');
   let added = 0, merged = 0, recovered = 0;
   for (const incoming of data.entries) {
-    if (!incoming || typeof incoming.id !== 'string') continue;
-    const local = await getEntry(incoming.id);
-    if (!local) { await putEntry({ ...incoming }); added++; continue; }
-    if (incoming.rev > local.rev) {
-      if (local.body && incoming.body && local.body !== incoming.body) {
-        const rec = newEntry();
-        rec.body = local.body;
-        rec.created_at = local.created_at;
-        await putEntry(rec);
-        recovered++;
-      }
-      await putEntry({ ...incoming });
-      merged++;
-    } else {
-      merged++;
-    }
+    const r = await mergeEntry(incoming);
+    if (r === 'added') added++;
+    else if (r === 'merged') merged++;
+    else if (r === 'recovered') { merged++; recovered++; }
   }
   return { added, merged, recovered };
 }

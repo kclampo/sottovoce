@@ -78,6 +78,10 @@ async function renderScore() {
   systems.replaceChildren();
 
   $('emptyWrite').hidden = entries.length > 0;
+  /* ⭐ The atmospheric invite is for an EMPTY score. Once there are notes, the
+     header "+" is the control — a dim italic line reads as a heading, not a
+     button. This is why a second thought on the same day was hard to start. */
+  $('newBtn').hidden = entries.length > 0;
 
   const sentCount = entries.filter(e => e.state === 'sent').length;
   const everShown = await getSetting('empty_sent_shown', false);
@@ -293,14 +297,26 @@ function download(filename, text, mime = 'application/json') {
 }
 
 /* ─────────────────────────────────────────────────────────── wiring */
-$('newBtn').addEventListener('click', async () => {
+/* ⭐ ONE create action, two entry points. The "+" in the header is the literal
+   control (§7c); "Hum something." stays as the empty-state invitation only. */
+async function createNote() {
   const e = newEntry();
   await putEntry(e);
-  openEditor(e.id);
-});
+  await openEditor(e.id);
+}
+$('newBtn').addEventListener('click', createNote);
+$('newTopBtn').addEventListener('click', createNote);
 
 $('backBtn').addEventListener('click', async () => {
   await persistNow();
+  /* ⛔ A note started by "+" and abandoned empty must not sit on the score as a
+     blank line — that is what made two thoughts on one day look like one
+     (2026-11-01). Tombstoned, never hard-deleted (§6). A SENT entry is never
+     touched here. */
+  if (current && current.state === 'draft' && !(current.body || '').trim()) {
+    await tombstone(current.id);
+    current = null;
+  }
   $('moreMenu').hidden = true;
   show('score');
   await renderScore();
@@ -512,6 +528,9 @@ $('setupDoneBtn').addEventListener('click', async () => {
     }
     startSyncTimers();
     window.APP_VERSION = APP_VERSION;
+    /* ⭐ So a refresh is visible at a glance (2026-11-01). */
+    const vtag = $('verTag');
+    if (vtag) vtag.textContent = 'v' + APP_VERSION;
   } catch (err) {
     console.error('boot failed', err);
     toast('Something went wrong opening the notebook.');

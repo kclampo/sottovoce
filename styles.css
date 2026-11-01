@@ -62,6 +62,12 @@ body { min-height: 100dvh; }
 }
 
 .dot { font-size: 12px; color: var(--dim); letter-spacing: .05em; }
+
+/* ⭐ VERSION, so a refresh can be confirmed at a glance (2026-11-01) */
+.ver { font-size: 10px; letter-spacing: .04em; color: var(--dim); opacity: .75; }
+
+/* the literal new-thought control; slightly larger hit area than the dots */
+#newTopBtn { font-size: 20px; line-height: 1; padding: 0 8px; }
 .dot.ok { color: var(--accent); }
 .dot.warn { color: var(--danger); }
 
