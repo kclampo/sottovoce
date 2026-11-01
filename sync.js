@@ -20,7 +20,7 @@ let _busy = false;
 export async function tree() {
   if (_tree) return _tree;
   const cached = await getSetting('drive_tree', null);
-  if (cached && cached.notes && cached.outbox && cached.meta) { _tree = cached; return _tree; }
+  if (cached && cached.notes && cached.outbox) { _tree = cached; return _tree; }
   const t = await ensureTree();
   await setSetting('drive_tree', t);
   _tree = t;

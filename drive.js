@@ -153,13 +153,16 @@ export async function ensureFolder(name, parentId = null) {
   return made.id;
 }
 
-/** The whole tree: app folder → notes/ + outbox/ + meta/ */
+/** The tree: app folder → notes/ + outbox/
+ *  ⛔ NO meta/ FOLDER (2026-11-01: "you can drop the cursor"). §3 originally
+ *  specified meta/device.json for a device id + sync cursor. Sync never used one
+ *  — pull lists notes/ and compares by entry id — so it was an empty folder
+ *  appearing in her Drive for no reason. Dropped from the spec and the code. */
 export async function ensureTree() {
   const root = await ensureFolder(FOLDER_NAME);
   const notes = await ensureFolder('notes', root);
   const outbox = await ensureFolder('outbox', root);
-  const meta = await ensureFolder('meta', root);
-  return { root, notes, outbox, meta };
+  return { root, notes, outbox };
 }
 
 /* ------------------------------------------------------------ file writes */

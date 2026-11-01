@@ -1,4 +1,4 @@
 {
-  "version": "1.0.3",
-  "notes": "First run. Opening the app for the first time now asks who to send to and how you sign off, and offers the Google Drive connection right there instead of hiding it behind the settings icon. It is skippable — Start writing works with Drive never connected, because the fallback is Export, not a sign-in wall."
+  "version": "1.0.4",
+  "notes": "Dropped the meta folder and its never-written device.json. Sync never used a cursor, so it was an empty folder appearing in the Drive for no reason."
 }
