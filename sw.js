@@ -15,7 +15,7 @@
  * ⚠️ Only same-origin GETs are handled. The Google Identity Services script comes
  * from accounts.google.com — never intercept or cache it, or silent re-auth breaks.
  */
-const CACHE = 'sotto-voce-v8';
+const CACHE = 'sotto-voce-v9';
 const SHELL = [
   './',
   './index.html',
@@ -65,10 +65,15 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  /* ⭐ NETWORK-FIRST. Online ⇒ always the current build. Offline ⇒ cache, then
-     index.html so the app still opens with no signal. */
+  /* ⭐ NETWORK-FIRST, AND BYPASS THE BROWSER'S HTTP CACHE.
+     GitHub Pages serves assets with `Cache-Control: max-age=600`, so a plain
+     fetch() can return a ten-minute-old file even though the service worker
+     itself is fresh. That is why a deploy could be live on the server and
+     invisible on the phone — the version number in the header included
+     (2026-11-01). `cache: 'no-store'` forces the real network.
+     Offline ⇒ cache, then index.html so the app still opens with no signal. */
   e.respondWith(
-    fetch(req).then(r => {
+    fetch(req, { cache: 'no-store' }).then(r => {
       if (r && r.ok) {
         const copy = r.clone();
         caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
