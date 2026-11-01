@@ -1,4 +1,4 @@
 {
-  "version": "1.0.5",
-  "notes": "Sync now pulls the newer copy down. Before this, pull skipped any entry the phone already had, so an edit made on another device never arrived and the two copies drifted apart silently. Every remote entry is now compared by rev and merged with the same rule Import uses, and the merge runs before the push so a newer Drive copy cannot be overwritten. Also: version shown in the header, a literal + for a new thought, and empty notes no longer pile up as blank lines."
+  "version": "1.0.6",
+  "notes": "The service worker now loads from the network first and only falls back to the cache when offline. Before this, a new deploy needed two launches to appear, which meant the version number in the header could never do its job - the thing that tells you whether the refresh happened was itself hidden by the stale cache."
 }

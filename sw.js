@@ -1,12 +1,21 @@
 /*
  * sotto voce — sw.js
- * ⛔ BUMP CACHE ON EVERY DEPLOY. A cache-first SW with an unchanged name serves
- * the old app forever and she concludes nothing shipped.
+ *
+ * ⭐ NETWORK-FIRST for same-origin files, with the cache as the OFFLINE fallback
+ * only. It used to be cache-first, which meant a new deploy needed TWO launches
+ * to appear: the first one installed the new worker, the second one ran it. That
+ * is why a version number in the header could not do its job — the thing that
+ * tells you whether the refresh happened was itself hidden by the stale cache
+ * (2026-11-01).
+ *
+ * These are a handful of small local files. Fetching them fresh over the network
+ * costs milliseconds; serving a stale build costs a confusing afternoon. Offline
+ * still works — a failed fetch falls back to the cache, then to index.html.
  *
  * ⚠️ Only same-origin GETs are handled. The Google Identity Services script comes
  * from accounts.google.com — never intercept or cache it, or silent re-auth breaks.
  */
-const CACHE = 'sotto-voce-v6';
+const CACHE = 'sotto-voce-v7';
 const SHELL = [
   './',
   './index.html',
@@ -56,11 +65,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  /* ⭐ NETWORK-FIRST. Online ⇒ always the current build. Offline ⇒ cache, then
+     index.html so the app still opens with no signal. */
   e.respondWith(
-    caches.match(req).then(hit => hit || fetch(req).then(r => {
-      const copy = r.clone();
-      caches.open(CACHE).then(c => c.put(req, copy));
+    fetch(req).then(r => {
+      if (r && r.ok) {
+        const copy = r.clone();
+        caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+      }
       return r;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() =>
+      caches.match(req).then(hit => hit || caches.match('./index.html'))
+    )
   );
 });
