@@ -16,7 +16,7 @@
 import { APP_VERSION } from './version.js';
 import { GOOGLE_CLIENT_ID } from './config.js';
 import {
-  newEntry, putEntry, getEntry, listEntries, tombstone,
+  newEntry, putEntry, getEntry, listEntries, tombstone, entriesNeedingSync,
   getSetting, setSetting, requestPersistence,
   exportJSON, exportMarkdown, importJSON, markSynced,
 } from './db.js';
@@ -36,6 +36,10 @@ function show(name) {
 }
 
 let current = null;        // entry being edited
+/* ⭐ Entries removed from the shelf by a delete that has not been committed yet.
+   Declared up here because renderScore() filters on it and is defined earlier in
+   the file than the undo machinery. */
+const hiddenIds = new Set();
 let saveTimer = null;
 let syncTimer = null;
 
@@ -73,7 +77,7 @@ function firstLine(body) {
 
 /* ─────────────────────────────────────────────────────────── the score */
 async function renderScore() {
-  const entries = await listEntries();
+  const entries = (await listEntries()).filter(e => !hiddenIds.has(e.id));
   const systems = $('systems');
   systems.replaceChildren();
 
@@ -162,6 +166,16 @@ async function updateSyncDot() {
   try {
     const { at, err } = await lastSyncInfo();
     if (err) { el.textContent = '⚠'; el.className = 'dot warn'; el.title = err; return; }
+    /* ⭐ ◐ PENDING (spec §15 #5). Without this, a note that had not uploaded yet
+       looked exactly like one that had — the gap was invisible at the only moment
+       it mattered. */
+    const pending = (await entriesNeedingSync()).length;
+    if (pending > 0) {
+      el.textContent = '◐ pending';
+      el.className = 'dot pend';
+      el.title = pending + (pending === 1 ? ' note' : ' notes') + ' not uploaded yet';
+      return;
+    }
     if (!at) { el.textContent = '○'; el.className = 'dot'; el.title = 'not synced yet'; return; }
     el.textContent = '● synced';
     el.className = 'dot ok';
@@ -336,14 +350,53 @@ $('exportEntryBtn').addEventListener('click', () => {
   $('moreMenu').hidden = true;
 });
 
-$('deleteBtn').addEventListener('click', async () => {
-  if (!current) return;
-  await tombstone(current.id);      // tombstone, never a hard delete
-  $('moreMenu').hidden = true;
-  current = null;
+/* ══════════════════════════════════════════════ soft delete + undo (§15 #7)
+   One tap removes it from the shelf immediately and starts a 5-second clock.
+   UNDO puts it back. If the clock runs out, the tombstone is written. If the app
+   is killed mid-window, NOTHING is written — the note simply survives, which is
+   the safe direction to fail in. A second delete inside the window commits the
+   first, so two quick deletes cannot leave the earlier one un-tombstoned. */
+let pendingDelete = null;
+let pendingH = null;
+
+function commitPendingDelete() {
+  if (!pendingDelete) return;
+  const id = pendingDelete;
+  clearTimeout(pendingH);
+  pendingDelete = null; pendingH = null;
+  hiddenIds.delete(id);
+  tombstone(id).then(() => fullSync().then(updateSyncDot).catch(() => {})).catch(() => {});
+}
+
+async function softDelete(id) {
+  commitPendingDelete();
+  pendingDelete = id;
+  hiddenIds.add(id);
+  $('undoMsg').textContent = 'Deleted.';
+  $('undoBar').hidden = false;
   show('score');
   await renderScore();
-  toast('Deleted.');
+  pendingH = setTimeout(() => {
+    $('undoBar').hidden = true;
+    commitPendingDelete();
+  }, 5000);
+}
+
+$('undoBtn').addEventListener('click', async () => {
+  if (!pendingDelete) return;
+  clearTimeout(pendingH);
+  hiddenIds.delete(pendingDelete);
+  pendingDelete = null; pendingH = null;
+  $('undoBar').hidden = true;
+  await renderScore();
+});
+
+$('deleteBtn').addEventListener('click', async () => {
+  if (!current) return;
+  const id = current.id;
+  $('moreMenu').hidden = true;
+  current = null;
+  await softDelete(id);
 });
 
 $('settingsBtn').addEventListener('click', async () => {

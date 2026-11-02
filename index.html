@@ -142,6 +142,16 @@
   </div>
 </section>
 
+<!-- ⭐ UNDO (spec §15 #7). One tap, five seconds, then the tombstone lands.
+     No "are you sure?" — a journal that argues with you about discarding a
+     half-thought stops being written in. The entry is only TOMBSTONED after
+     the window closes; if the app dies mid-window it simply never gets
+     deleted, which is the safe way to fail. -->
+<div id="undoBar" hidden>
+  <span id="undoMsg">Deleted.</span>
+  <button id="undoBtn" type="button">UNDO</button>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 <div id="reconnect" class="reconnect" hidden>Tap to reconnect</div>
 
