@@ -1,4 +1,4 @@
 {
-  "version": "1.0.8",
-  "notes": "The service worker now bypasses the browser's HTTP cache as well as loading from the network. GitHub Pages sets a ten minute cache on assets, so a plain network-first fetch could still hand back an old file. That was the last reason a deploy could be live and invisible on the phone."
+  "version": "1.0.9",
+  "notes": "The app is registered with Google, so Drive sync can be switched on. The client ID is the app's public name badge: it identifies the software, not a person, and grants nobody access to anybody's files. It is designed to be public - every browser app using Google sign-in ships one in its JavaScript. No client secret exists for this flow and none is stored anywhere."
 }

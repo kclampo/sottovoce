@@ -44,7 +44,7 @@
  * export — everything except Drive sync. Settings will say so in plain English.
  */
 
-export const GOOGLE_CLIENT_ID = '';
+export const GOOGLE_CLIENT_ID = '458851494237-gueqf12j6volpertp272q0drrappgcp1.apps.googleusercontent.com';
 
 /**
  * Recipient is NOT baked in. It is set on the device, by the person using it,
