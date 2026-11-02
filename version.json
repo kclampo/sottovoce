@@ -1,4 +1,4 @@
 {
-  "version": "1.0.11",
+  "version": "1.0.12",
   "notes": "Deleting a note now shows an undo bar for five seconds before anything is written. Until the window closes the entry is only hidden, so a mis-tap cannot destroy a draft - and if the app is closed mid-window nothing is deleted at all. The sync indicator also gained its missing middle state: a hollow half circle when notes are waiting to upload, so a note that has not reached Drive no longer looks identical to one that has."
 }

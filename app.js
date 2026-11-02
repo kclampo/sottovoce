@@ -258,7 +258,18 @@ async function doSend() {
   const body = $('editor').value;
   if (!body.trim()) { toast('Nothing to send yet.'); return; }
 
-  const { url } = buildMailto({ recipient: recip, subject: 'a note', body });
+  /* The subject is the email's signature, and it is deliberately the same on
+     every note. Chosen 2026-11-02: Gmail threads matching subjects, so
+     every note she ever sends lands in ONE conversation — "a song shared between
+     us, in fragments" (§7c). That is the design, not a side effect.
+     ⚠️ Note this is Title Case while the in-app mark is lowercase italic
+     (`sotto voce`, a score marking). Different contexts, different jobs: the
+     subject is a signature seen in a mail inbox, the mark is notation on paper. */
+  const { url } = buildMailto({
+    recipient: recip,
+    subject: 'Sotto Voce - A Song Shared Between Us',
+    body,
+  });
 
   // ── THE HANDOFF — inside the gesture task, never awaited.
   const handedOff = openMailto(url);
