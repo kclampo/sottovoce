@@ -39,6 +39,24 @@ export function configure({ clientId, onNeedReconnect }) {
 export function hasClientId() { return !!CLIENT_ID; }
 export function isConnected() { return !!_token && Date.now() < _tokenExp; }
 
+/**
+ * ⛔ BACKGROUND CALLS USE THIS, NEVER token().
+ *
+ * token() drives Google Identity Services, and every GIS call opens a window at
+ * accounts.google.com/o/oauth2/v2/auth — even with prompt:'none'. Fired from the
+ * middle of an async chain there is no user gesture left to authorise it, so the
+ * window flashes, the OAuth promise never settles, and the caller hangs FOREVER.
+ * That is exactly what broke the Send button: the awaited Drive write never
+ * returned, so the mailto handoff behind it never ran.
+ *
+ * Only the Connect button (a real gesture) may call token(). Everything else
+ * reads the in-memory token and fails FAST and HONESTLY if there is none.
+ */
+export function cachedToken() {
+  if (_token && Date.now() < _tokenExp) return Promise.resolve(_token);
+  return Promise.reject(new Error('Not connected to Google Drive.'));
+}
+
 function loadGis() {
   return new Promise((res, rej) => {
     if (window.google && window.google.accounts && window.google.accounts.oauth2) return res();
@@ -62,7 +80,14 @@ export async function token({ silent = false, interactive = false } = {}) {
   if (isConnected()) return _token;
   await loadGis();
 
-  return new Promise((res, rej) => {
+  /* ⛔ HARD TIMEOUT. GIS calls can hang indefinitely when the popup is blocked or
+     the gesture was consumed. Nothing in this app may wait forever on Google. */
+  const hardTimeout = new Promise((_res, rej) => {
+    setTimeout(() => rej(new Error('Google sign-in did not respond. Try again from Settings.')),
+               silent ? 4000 : 90000);
+  });
+
+  const attempt = new Promise((res, rej) => {
     try {
       if (!_client) {
         _client = window.google.accounts.oauth2.initTokenClient({
@@ -88,6 +113,9 @@ export async function token({ silent = false, interactive = false } = {}) {
       rej(err);
     }
   });
+
+  // Whichever settles first wins — a hung popup can no longer block a caller.
+  return Promise.race([attempt, hardTimeout]);
 }
 
 export function disconnect() {
@@ -99,23 +127,20 @@ export function disconnect() {
 
 /* ------------------------------------------------------------ HTTP helper */
 async function api(path, { method = 'GET', headers = {}, body = null, retry = true } = {}) {
-  const t = await token({ silent: true });
+  const t = await cachedToken();
   const r = await fetch(path.startsWith('http') ? path : API + path, {
     method,
     headers: { Authorization: `Bearer ${t}`, ...headers },
     body,
   });
 
-  // §5c: a 401 gets ONE silent retry before we ask her to reconnect.
+  /* §5c: a 401 must NOT trigger a silent GIS refresh here — that is a background
+     call with no gesture, and it hangs. Drop the dead token, tell the user to
+     reconnect, and fail fast so the caller can degrade instead of blocking. */
   if (r.status === 401 && retry) {
     _token = null; _tokenExp = 0;
-    try {
-      await token({ silent: true });
-    } catch {
-      if (_onNeedReconnect) _onNeedReconnect();
-      throw new Error('Google session expired. Tap to reconnect.');
-    }
-    return api(path, { method, headers, body, retry: false });
+    if (_onNeedReconnect) _onNeedReconnect();
+    throw new Error('Google session expired. Tap to reconnect.');
   }
   if (!r.ok) {
     let detail = '';

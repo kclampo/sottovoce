@@ -94,6 +94,9 @@
   <textarea id="editor" placeholder="Hum something." spellcheck="true" autocomplete="off"></textarea>
 
   <p id="sentNote" class="sentNote" hidden>Sent <span id="sentAt"></span></p>
+  <!-- ⛔ mailto opens a compose window and stops. This line tells the truth about
+       what actually happened, because the app can never verify delivery. -->
+  <p id="handoffNote" class="sentNote" hidden></p>
 
   <footer class="composer">
     <button id="sendBtn" class="send">Send to <span id="recipientName">them</span></button>

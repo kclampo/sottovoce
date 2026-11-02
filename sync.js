@@ -127,7 +127,12 @@ export function buildMailto({ recipient, subject, body }) {
       + 'Drive folder: sotto voce → outbox.]';
     truncated = true;
   }
-  const u = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(b)}`;
+  /* ⛔ The ADDRESS must not be percent-encoded. encodeURIComponent turns the `@`
+     into `%40`, and while RFC 6068 permits it, several mail handlers (and some
+     Android/Gmail combinations) fail to decode it and open an empty compose
+     window. Strip header-breaking characters instead of encoding the whole thing. */
+  const to = String(recipient || '').replace(/[\s,;<>"']+/g, '');
+  const u = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(b)}`;
   return { url: u, truncated };
 }
 

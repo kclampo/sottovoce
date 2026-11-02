@@ -36,6 +36,11 @@ function show(name) {
 }
 
 let current = null;        // entry being edited
+/* ⛔ _recip is the recipient CACHED IN MEMORY. doSend() must build the mailto
+   inside the click's own task — an await before that consumes the user gesture,
+   and both `mailto:` and the OAuth popup then fail. IndexedDB cannot be read
+   synchronously, so the value is mirrored here whenever it is loaded or saved. */
+let _recip = '';
 /* ⭐ Entries removed from the shelf by a delete that has not been committed yet.
    Declared up here because renderScore() filters on it and is defined earlier in
    the file than the undo machinery. */
@@ -232,52 +237,94 @@ function queueSave() {
 
 /* ─────────────────────────────────────────────────────────── send */
 async function doSend() {
-  if (!current) return;
-  const recip = await getSetting('recipient', '');
+  /* ⛔ v1.0.11 — ORDER IS THE FIX.
+     Everything above the first `await` runs synchronously inside the click's own
+     task, so the browser still counts it as user-initiated. That is the ONLY
+     window in which a `mailto:` handoff is allowed to fire.
+
+     The previous build did `await writeOutbox()` BEFORE the mailto. writeOutbox
+     reaches Google, GIS opens the OAuth popup with the gesture already spent, and
+     that promise NEVER SETTLES — so every line after it, the mailto included, was
+     dead. Symptom: a flash of a Google window, no email, no error, nothing in
+     Sent, and the note still showing as a draft. §5c says the editor must never
+     block on the network; the send path did exactly that.
+
+     So: hand off FIRST, bookkeep after. Delivery never waits on Drive. */
+  if (!current || current.state === 'sent') return;
+
+  const recip = _recip;                      // cached — an await here breaks the gesture
   if (!recip) { toast('Add a recipient in Settings first.'); return; }
 
-  await persistNow();
-  if (!current.body.trim()) { toast('Nothing to send yet.'); return; }
+  const body = $('editor').value;
+  if (!body.trim()) { toast('Nothing to send yet.'); return; }
 
-  // Freeze it. §1b — a sent entry is the record of what she actually sent him.
+  const { url } = buildMailto({ recipient: recip, subject: 'a note', body });
+
+  // ── THE HANDOFF — inside the gesture task, never awaited.
+  const handedOff = openMailto(url);
+
+  // ── bookkeeping from here down; nothing above this line can fail silently
+  current.body = body;
   current.state = 'sent';
   current.sent_at = new Date().toISOString();
   current.rev += 1;
   current = await putEntry(current);
 
-  // A — the durable copy. Failure here must NOT block the send (§5c: local-first).
-  let outboxOk = true;
-  try {
-    await writeOutbox(current);
-  } catch (err) {
-    outboxOk = false;
-    await setSetting('last_sync_error', 'outbox: ' + String(err.message || err));
-  }
-
-  // B — mailto handoff. The final tap is hers, in her own mail client.
-  const { url, truncated } = buildMailto({
-    recipient: recip,
-    subject: 'a note',
-    body: current.body,
-  });
-  window.location.href = url;
-
   $('editorMeta').textContent = 'sent';
   $('sentNote').hidden = false;
   $('sentAt').textContent = new Date(current.sent_at).toLocaleString();
+  $('handoffNote').hidden = false;
+  $('handoffNote').textContent = handedOff
+    ? 'Opened in your mail app. Tap Send there to deliver it.'
+    : 'Your mail app did not open. The note is saved here — use Export, or copy it.';
   $('editor').readOnly = true;
   $('sendBtn').disabled = true;
 
-  toast('Played.');
+  toast(handedOff ? 'Played.' : 'Saved as sent.');
+
+  // Durable outbox copy — fire-and-forget. It must never block the send, never
+  // pop an auth window, and never invent an error the user has to read.
+  writeOutbox(current)
+    .then(() => updateSyncDot())
+    .catch(async err => {
+      await setSetting('last_sync_error', 'outbox: ' + String(err.message || err));
+      updateSyncDot();
+    });
+
   await renderScore();
-  if (outboxOk) { fullSync().then(updateSyncDot).catch(() => {}); }
-  if (!outboxOk) toast('Saved here. Drive copy will follow.');
+}
+
+/**
+ * ⛔ mailto IS NOT A SEND. It opens a compose window in the user's own mail app
+ * and STOPS there. Nothing reaches Gmail's Sent folder, and nothing reaches the
+ * recipient, until they tap send inside that app. That is deliberate (§4 — the
+ * final tap is theirs, in their own mail client).
+ *
+ * There is no API to detect whether a handler exists, so this may never claim
+ * delivery. An anchor click is the most reliable handoff and works in both a
+ * browser tab and an installed standalone PWA — `window.location.href = mailto:`
+ * does nothing in standalone mode.
+ */
+function openMailto(url) {
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────── settings */
 async function loadSettings() {
   $('recipient').value = await getSetting('recipient', '');
   $('displayName').value = await getSetting('display_name', '');
+  _recip = $('recipient').value;      // mirror for the gesture-safe send path
 
   const { at, err } = await lastSyncInfo();
   $('lastSync').textContent = at ? new Date(at).toLocaleString() : 'never';
@@ -411,6 +458,7 @@ $('closeSettingsBtn').addEventListener('click', async () => {
 $('recipient').addEventListener('input', async e => {
   const v = e.target.value.trim();
   e.target.value = v;
+  _recip = v;
   await setSetting('recipient', v);
 });
 $('displayName').addEventListener('input', async e => {
@@ -530,6 +578,7 @@ $('setupConnectBtn').addEventListener('click', async () => {
 $('setupRecipient').addEventListener('input', async e => {
   const v = e.target.value.trim();
   e.target.value = v;
+  _recip = v;
   await setSetting('recipient', v);
 });
 $('setupName').addEventListener('input', async e => {
@@ -542,6 +591,7 @@ $('setupDoneBtn').addEventListener('click', async () => {
     $('setupMsg').textContent = 'That does not look like an email address.';
     return;
   }
+  _recip = r;
   await setSetting('recipient', r);
   await setSetting('display_name', $('setupName').value.trim());
   await setSetting('onboarded', true);
@@ -566,6 +616,7 @@ $('setupDoneBtn').addEventListener('click', async () => {
       try { await navigator.serviceWorker.register('./sw.js', { scope: './' }); } catch {}
     }
 
+    _recip = await getSetting('recipient', '');
     await renderScore();
 
     // ⭐ FIRST RUN (§7a). Drive is offered here, once, on the phone.
@@ -575,10 +626,13 @@ $('setupDoneBtn').addEventListener('click', async () => {
       show('score');
     }
 
-    // §5c silent reconnect if a client ID exists and a Google session is live
-    if (hasClientId()) {
-      token({ silent: true }).then(() => { resetTreeCache(); syncNow(); }).catch(() => {});
-    }
+    /* ⛔ NO GOOGLE CALL AT BOOT (v1.0.11).
+       This used to fire token({silent:true}) on every launch. The access token is
+       memory-only, so at boot there is NEVER one to refresh — meaning GIS opened
+       an OAuth request with no user gesture on every single load. In testing that
+       NAVIGATED THE WHOLE PAGE AWAY to a Google origin_mismatch error, and on a
+       phone it is the flash-of-Google-window that makes the app look broken.
+       Drive connects when the user taps Connect in Settings, and never otherwise. */
     startSyncTimers();
     window.APP_VERSION = APP_VERSION;
     /* ⭐ So a refresh is visible at a glance (2026-11-01). EVERY screen's header

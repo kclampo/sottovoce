@@ -1,0 +1,45 @@
+v1.0.11 — send was dead: the handoff sat behind a Google call that never returns
+
+Kevin: "I see a brief Google authentication pop up but nothing happens."
+
+He was right that it did not send. Reproduced and proven, not guessed.
+
+THE BUG. doSend() awaited writeOutbox() BEFORE building the mailto. writeOutbox
+reaches Google, GIS opens an OAuth window, and because the click's user gesture
+is consumed by the preceding awaits that promise NEVER SETTLES. Every line after
+it was dead code — the mailto, the state change, the UI. Observed on the live
+v1.0.10 build: window.open to accounts.google.com fires, then zero fetch calls,
+no mailto, no error, note still showing as draft. Hangs forever, no failure path.
+
+THREE FIXES.
+
+1. ORDER. Everything above the first await runs inside the click's own task, so
+   the browser still counts it as user-initiated. The mailto handoff is now
+   there; the Drive write moved below it and is fire-and-forget. Spec 5c says the
+   editor must never block on the network — the send path was doing exactly that.
+   Delivery no longer waits on Drive.
+
+2. BACKGROUND PATHS NEVER TOUCH GOOGLE. New cachedToken() reads the in-memory
+   token only and fails fast. api() uses it. A 401 now drops the token and asks
+   for a reconnect instead of silently driving GIS. token() gained a hard timeout
+   (4s silent / 90s interactive) so nothing can hang indefinitely.
+
+3. BOOT NO LONGER CALLS GOOGLE. The old launch-time silent token request always
+   ran with no gesture, because a memory-only token never survives a reload — so
+   every load asked Google for authorisation unbidden. In testing that NAVIGATED
+   THE WHOLE PAGE AWAY to a Google origin_mismatch error. Removed. Only the
+   Connect button authorises Drive now, and only from a real tap.
+
+ALSO FIXED: buildMailto percent-encoded the '@' in the address (denise%40...).
+Legal under RFC 6068, but several mail handlers fail to decode it and open an
+empty compose window. Now strips only header-breaking characters.
+
+HONESTY: mailto hands off to the user's mail app and STOPS. Nothing reaches
+Gmail's Sent folder until they tap send there. The app cannot detect whether a
+handler exists, so the editor now says plainly "Opened in your mail app. Tap Send
+there to deliver it." and, if the anchor click throws, "Your mail app did not
+open". "Played." is kept as the quiet beat but never claims delivery.
+
+Verified locally: exactly one event — the mailto, with a correct unencoded
+address, and no Google window at all. Entry persisted as sent, handoff line
+shown, zero console errors.
